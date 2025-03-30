@@ -14960,3 +14960,106 @@ def generate_e73095fd(diff_lb: float, diff_ub: float) -> dict:
         if 4 in palette(go):
             break
     return {'input': gi, 'output': go}
+
+# ARC-AGI-1 evaluation tasks
+def generate_00576224(diff_lb: float, diff_ub: float) -> dict:
+    colors = interval(0, 10, 1) 
+    # limit h and w based based on max size of 30x30 for output (3h x 3w)
+    h = unifint(diff_lb, diff_ub, (2, 10))
+    w = unifint(diff_lb, diff_ub, (2, 10))
+    # make a random rectangle
+    grid_rows = []
+    for _ in range(h):
+        current_row = []
+        for _ in range(w):
+            current_row.append(choice(colors)) # Assign a random color
+        grid_rows.append(tuple(current_row))
+    gi = tuple(grid_rows)
+
+    # tranformation:
+    # copy rectangle 3 times in the row direction
+    # copy row 3 times in the column direction
+    # each rectangle in middle row is mirrored horizontally
+
+    # Create the three rows needed for the output grid
+    # Row 1: gi | gi | gi
+    row1 = hconcat(hconcat(gi, gi), gi)
+    # Row 2: hmirror(gi) | hmirror(gi) | hmirror(gi)
+    # mirror input grid along vertical axis
+    gi_vmirror = vmirror(gi)
+    row2 = hconcat(hconcat(gi_vmirror, gi_vmirror), gi_vmirror)
+    # Row 3 is the same as Row 1
+    row3 = row1
+    go = vconcat(vconcat(row1, row2), row3)
+    return {'input': gi, 'output': go}
+
+def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
+    # this is hard because color shape that is in test must be in at least one of examples
+    # otherwise model will be forced to memorize all color indicating hapes which we don't want
+    h = unifint(diff_lb, diff_ub, (10, 30))
+    w = unifint(diff_lb, diff_ub, (10, 30))
+
+    # Define 10 distinct 3x3 shapes, one for each color 0-9
+    color_indicator = {
+        # Color 0: 'I' shape (111 010 111)
+        0: frozenset(((0,0), (0,1), (0,2), (1,1), (2,0), (2,1), (2,2))),
+        # Color 1 (Blue): 'X' shape (101 010 101)
+        1: frozenset(((0,0), (0,2), (1,1), (2,0), (2,2))),
+        # Color 2 (Red): 'Plus' shape (010 111 010)
+        2: frozenset(((0,1), (1,0), (1,1), (1,2), (2,1))),
+        # Color 3 (Green): 'Crab' shape (101 010 111)
+        3: frozenset(((0,0), (0,2), (1,1), (2,0), (2,1), (2,2))),
+        # Color 4 (Yellow): 'Filled square' (111 111 111)
+        4: frozenset(((0,0), (0,1), (0,2), (1,0), (1,1), (1,2), (2,0), (2,1), (2,2))),
+        # Color 5 (Grey): 'U' shape (101 101 111)
+        5: frozenset(((0,0), (0,2), (1,0), (1,2), (2,0), (2,1), (2,2))),
+        # Color 6 (Pink): 'Empty square center' (111 101 111)
+        6: frozenset(((0,0), (0,1), (0,2), (1,0), (1,2), (2,0), (2,1), (2,2))),
+        # Color 7 (Orange): 'Home plate' shape (111 101 010)
+        7: frozenset(((0,0), (0,1), (0,2), (1,0), (1,2), (2,1))),
+        # Color 8 (Cyan): 'Diagonal' shape (100 010 001)
+        8: frozenset(((0,0), (1,1), (2,2))),
+        # Color 9 (Maroon): 'L' shape (100 100 111)
+        9: frozenset(((0,0), (1,0), (2,0), (2,1), (2,2))),
+    }
+
+    colors = interval(0, 10, 1)
+    target_color, bgc, indicator_color, obj_color = sample(colors, 4)
+
+    # grid in:
+    gi = canvas(bgc, (h, w))
+    # add color indicating shape to grid in random location
+    indicator = color_indicator[target_color]
+    di = randint(0, h - 3)
+    dj = randint(0, w - 3)
+    indicator = shift(indicator, (di, dj))
+    gi = fill(gi, indicator_color, indicator)
+
+    # create a random connected shape based on grid size
+    inds = asindices(gi)
+    forbidden: Indices = indicator | mapply(neighbors, indicator)
+    inds = sfilter(
+        inds,
+        lambda loc: loc not in forbidden
+    )
+
+    # grow the object (Flood Fill on available bgc cells)
+    obj = initset(choice(totuple(inds))) 
+    max_cells = ((h * w) - len(forbidden)) // 2
+    obj_size = unifint(diff_lb, diff_ub, (10, max_cells))
+    for _ in range(obj_size):
+        potential_next = mapply(neighbors, obj)
+        valid_next = sfilter(
+            potential_next,
+            lambda loc: loc in potential_next and loc not in forbidden
+        )
+        next_cell = initset(choice(totuple(valid_next)))
+        obj |= next_cell
+    gi = fill(gi, obj_color, obj)
+
+    # grid out:
+    # remove color indicating obj (make background color)
+    go = fill(gi, bgc, indicator)
+    # change color of connected obj to target color
+    go = fill(go, target_color, obj)     
+    return {'input': gi, 'output': go}
