@@ -14961,6 +14961,7 @@ def generate_e73095fd(diff_lb: float, diff_ub: float) -> dict:
             break
     return {'input': gi, 'output': go}
 
+
 # ARC-AGI-1 evaluation tasks
 def generate_00576224(diff_lb: float, diff_ub: float) -> dict:
     colors = interval(0, 10, 1) 
@@ -14992,6 +14993,7 @@ def generate_00576224(diff_lb: float, diff_ub: float) -> dict:
     row3 = row1
     go = vconcat(vconcat(row1, row2), row3)
     return {'input': gi, 'output': go}
+
 
 def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
     # this is hard because color shape that is in test must be in at least one of examples
@@ -15063,3 +15065,55 @@ def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
     # change color of connected obj to target color
     go = fill(go, target_color, obj)     
     return {'input': gi, 'output': go}
+
+
+def generate_00dbd492(diff_lb: float, diff_ub: float) -> dict:
+    # another example where all possible colors need to be shown in examples
+
+    # assumed transformation:
+    width_to_color = {
+        5: 8, # width 5 = light blue 8
+        7: 4, # width 7 = yellow 4
+        9: 3, # width 9 = green 3
+    }
+    # make it harder:
+    # regtangular grid
+    h = unifint(diff_lb, diff_ub, (6, 30))
+    w = unifint(diff_lb, diff_ub, (6, 30))
+    # background can be any _other_ color
+    # squares can be any _other_ color
+    colors = remove(8, remove(4, remove(3, interval(0, 10, 1))))
+    bgc, fgc = sample(colors, 2)
+    gi = canvas(bgc, (h,w))
+    # fill with as many squares as possible    
+    boxes = []
+    empty = asindices(gi)
+    while empty:
+        # Filter empty cells to find valid potential upper left corners for at least a 5x5 box
+        usable_ul = sfilter(empty, lambda loc: loc[0] <= h - 5 and loc[1] <= w - 5)
+        if not usable_ul: break 
+        i,j = choice(totuple(usable_ul))
+        valid_lr = []
+        for l in (5,7,9):
+            lr = (i+l-1, j+l-1)
+            if backdrop(frozenset({(i,j), lr})).issubset(empty):
+                valid_lr.append(lr)
+        if valid_lr:
+            lr = choice(valid_lr)
+            bx = box(frozenset({(i,j), lr}))
+            boxes.append(bx)
+            empty -= backdrop(outbox(bx))
+        else:
+            empty -= initset((i,j))
+    for bx in boxes:
+        bx = bx | initset(center(bx))
+        gi = fill(gi, fgc, bx)
+    go = gi
+    for bx in boxes:
+        go = fill(go, width_to_color[width(bx)], backdrop(inbox(bx)))
+        bx = bx | initset(center(bx))
+        go = fill(go, fgc, bx)
+    return {'input': gi, 'output': go}
+   
+
+   
