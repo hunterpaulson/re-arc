@@ -15071,7 +15071,7 @@ def generate_00dbd492(diff_lb: float, diff_ub: float) -> dict:
     # another example where all possible colors need to be shown in examples
 
     # assumed transformation:
-    width_to_color = {
+    width_to_fill = {
         5: 8, # width 5 = light blue 8
         7: 4, # width 7 = yellow 4
         9: 3, # width 9 = green 3
@@ -15105,15 +15105,96 @@ def generate_00dbd492(diff_lb: float, diff_ub: float) -> dict:
             empty -= backdrop(outbox(bx))
         else:
             empty -= initset((i,j))
+    if not boxes: # in the super rare case that no boxes were made, try again
+        return generate_00dbd492(diff_lb, diff_ub)
     for bx in boxes:
         bx = bx | initset(center(bx))
         gi = fill(gi, fgc, bx)
-    go = gi
+    go = tuple(e for e in gi)
     for bx in boxes:
-        go = fill(go, width_to_color[width(bx)], backdrop(inbox(bx)))
+        go = fill(go, width_to_fill[width(bx)], backdrop(inbox(bx)))
         bx = bx | initset(center(bx))
         go = fill(go, fgc, bx)
     return {'input': gi, 'output': go}
    
 
-   
+# NEW ARC-AGI-2 training tasks
+
+
+def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
+    # assumed transformation: 
+    # graviate other object (with n**2 cells) toward nxn square until it hits
+    # change nxn square to mirrored version of other object
+
+    # other must have 2x1 line that contacts first, rest can be random 
+    # convert 2x2 square to mirrored version of other object
+
+    # make it harder:
+    # random object and background colors
+    # random grid shape and 2x2 locations 
+    # random other object
+    ...
+    h = unifint(diff_lb, diff_ub, (12, 30))
+    w = unifint(diff_lb, diff_ub, (12, 30))
+    # background can be any _other_ color
+    # squares can be any _other_ color
+    colors = interval(0, 10, 1)
+    bgc, tgtc, objc, = sample(colors, 3)
+    gi = canvas(bgc, (h,w))
+    # add nxn square
+    l = unifint(diff_lb, diff_ub, (2, 5))
+    tgt = backdrop(frozenset({(0,0), (l-1,l-1)}))
+    tgt = shift(tgt, (randint(2, h-l-2), randint(2, w-l-2)))
+    gi = fill(gi, tgtc, tgt)
+    neinei = mapply(neighbors, mapply(neighbors, tgt))
+    empty = asindices(gi) - neinei
+    dirs = [(0,1), (1,0), (0,-1), (-1,0)]
+    shuffle(dirs)
+    obj_dir = None
+    for d in dirs:
+        # find a direction that has enough space for obj
+        space = sfilter(
+            shoot(ulcorner(tgt), d),
+            lambda loc: loc in empty
+        )
+        if len(space) >= l:
+            obj_dir = d
+            break
+    if obj_dir is None: 
+        return generate_11dc524f(diff_lb, diff_ub)
+    if obj_dir == (0,1):
+        empty = sfilter(empty, lambda loc: loc[1] > rightmost(neinei))
+    elif obj_dir == (1,0):
+        empty = sfilter(empty, lambda loc: loc[0] > lowermost(neinei))
+    elif obj_dir == (0,-1):
+        empty = sfilter(empty, lambda loc: loc[1] < leftmost(neinei))
+    elif obj_dir == (-1,0):
+        empty = sfilter(empty, lambda loc: loc[0] < uppermost(neinei))
+    # grow the object (Flood Fill on available bgc cells)
+    if obj_dir[0] == 0:
+        seed = connect(ulcorner(tgt), llcorner(tgt))
+    else:
+        seed = connect(ulcorner(tgt), urcorner(tgt))
+    while seed.issubset(mapply(neighbors, tgt)):
+        seed = shift(seed, obj_dir)
+    obj = shift(seed, obj_dir)
+    while size(obj) < l**2:
+        nei = sfilter(mapply(neighbors, obj), lambda loc: loc in empty)
+        next_cell = initset(choice(totuple(nei)))
+        obj |= next_cell
+    if square(obj): # if object is square it is not clear which to gravitate toward
+        return generate_11dc524f(diff_lb, diff_ub)
+    gi = fill(gi, objc, obj)
+    go = canvas(bgc, (h,w))
+    tgt_dir = (obj_dir[0] * -1, obj_dir[1] * -1)
+    while not adjacent(obj, tgt):
+        obj = shift(obj, tgt_dir)
+    go = fill(go, objc, obj)
+    mirrored = vmirror(obj) if obj_dir[0] == 0 else hmirror(obj)
+    hw = width(obj) if obj_dir[0] == 0 else height(obj)
+    for _ in range(hw):
+        mirrored = shift(mirrored, tgt_dir)
+    if not mirrored.issubset(asindices(go)):
+        return generate_11dc524f(diff_lb, diff_ub)
+    go = fill(go, tgtc, mirrored)
+    return {'input': gi, 'output': go}
