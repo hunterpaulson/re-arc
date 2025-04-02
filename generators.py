@@ -15133,7 +15133,6 @@ def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
     # random object and background colors
     # random grid shape and 2x2 locations 
     # random other object
-    ...
     h = unifint(diff_lb, diff_ub, (12, 30))
     w = unifint(diff_lb, diff_ub, (12, 30))
     # background can be any _other_ color
@@ -15142,7 +15141,7 @@ def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
     bgc, tgtc, objc, = sample(colors, 3)
     gi = canvas(bgc, (h,w))
     # add nxn square
-    l = unifint(diff_lb, diff_ub, (2, 5))
+    l = unifint(diff_lb, diff_ub, (3, 5))
     tgt = backdrop(frozenset({(0,0), (l-1,l-1)}))
     tgt = shift(tgt, (randint(2, h-l-2), randint(2, w-l-2)))
     gi = fill(gi, tgtc, tgt)
@@ -15197,4 +15196,40 @@ def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
     if not mirrored.issubset(asindices(go)):
         return generate_11dc524f(diff_lb, diff_ub)
     go = fill(go, tgtc, mirrored)
+    return {'input': gi, 'output': go}
+
+def generate_0b17323b(diff_lb: float, diff_ub: float) -> dict:
+    # assumed transformation, continue the diagonal sequence starting at ~corner with red (2)
+    h = unifint(diff_lb, diff_ub, (16, 30))
+    w = unifint(diff_lb, diff_ub, (16, 30))
+    colors = remove(2, interval(0, 10, 1))
+    bgc, fgc = sample(colors, 2)
+    gi = canvas(bgc, (h,w))
+    inds = asindices(gi)
+    corner = choice((ulcorner(inds), urcorner(inds), llcorner(inds), lrcorner(inds)))
+    di = unifint(diff_lb, diff_ub, (1, 5))
+    dj = unifint(diff_lb, diff_ub, (1, 5))
+    pi, pj = choice((0,1)), choice((0,1))
+    if corner == urcorner(inds):
+        dj = -dj
+        corner = (corner[0]+pi, corner[1]-pj)
+    elif corner == llcorner(inds):
+        di = -di
+        corner = (corner[0]-pi, corner[1]+pj)
+    elif corner == lrcorner(inds):
+        di = -di
+        dj = -dj
+        corner = (corner[0]-pi, corner[1]-pj)
+    else:
+        corner = (corner[0]+pi, corner[1]+pj)
+    corner = initset(corner)
+    max_iter = max(min(h//di, w//dj), 4)
+    k = choice(interval(3, max_iter, 1))
+    for _ in range(k):
+        gi = fill(gi, fgc, corner)
+        corner = shift(corner, (di, dj))
+    go = tuple(e for e in gi)
+    while corner.issubset(asindices(go)):
+        go = fill(go, 2, corner)
+        corner = shift(corner, (di, dj))
     return {'input': gi, 'output': go}
