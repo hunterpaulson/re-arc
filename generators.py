@@ -15251,9 +15251,7 @@ def generate_1478ab18(diff_lb: float, diff_ub: float) -> dict:
     chosen = initset(chosen)
     tri = chosen | hypotenuse | horizontal | vertical
     corners -= chosen
-    print(corners)
     corners |= inward
-    print(corners)
     ul = (randint(0, h-l), randint(0, w-l))
     corners = shift(corners, ul)
     tri = shift(tri, ul)
