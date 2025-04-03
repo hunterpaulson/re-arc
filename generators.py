@@ -14961,8 +14961,7 @@ def generate_e73095fd(diff_lb: float, diff_ub: float) -> dict:
             break
     return {'input': gi, 'output': go}
 
-
-# ARC-AGI-1 evaluation tasks
+# ARC-AGI-2 training tasks
 def generate_00576224(diff_lb: float, diff_ub: float) -> dict:
     colors = interval(0, 10, 1) 
     # limit h and w based based on max size of 30x30 for output (3h x 3w)
@@ -14976,12 +14975,10 @@ def generate_00576224(diff_lb: float, diff_ub: float) -> dict:
             current_row.append(choice(colors)) # Assign a random color
         grid_rows.append(tuple(current_row))
     gi = tuple(grid_rows)
-
     # tranformation:
     # copy rectangle 3 times in the row direction
     # copy row 3 times in the column direction
     # each rectangle in middle row is mirrored horizontally
-
     # Create the three rows needed for the output grid
     # Row 1: gi | gi | gi
     row1 = hconcat(hconcat(gi, gi), gi)
@@ -14996,12 +14993,11 @@ def generate_00576224(diff_lb: float, diff_ub: float) -> dict:
 
 
 def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
-    # this is hard because color shape that is in test must be in at least one of examples
-    # otherwise model will be forced to memorize all color indicating hapes which we don't want
+    # NOTE: color shape that is in test must be in at least one of TRAIN examples
+    # otherwise model will be forced to memorize all color indicating shapes which we don't want
     h = unifint(diff_lb, diff_ub, (10, 30))
     w = unifint(diff_lb, diff_ub, (10, 30))
 
-    # Define 10 distinct 3x3 shapes, one for each color 0-9
     color_indicator = {
         # Color 0: 'I' shape (111 010 111)
         0: frozenset(((0,0), (0,1), (0,2), (1,1), (2,0), (2,1), (2,2))),
@@ -15027,8 +15023,6 @@ def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
 
     colors = interval(0, 10, 1)
     target_color, bgc, indicator_color, obj_color = sample(colors, 4)
-
-    # grid in:
     gi = canvas(bgc, (h, w))
     # add color indicating shape to grid in random location
     indicator = color_indicator[target_color]
@@ -15036,7 +15030,6 @@ def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
     dj = randint(0, w - 3)
     indicator = shift(indicator, (di, dj))
     gi = fill(gi, indicator_color, indicator)
-
     # create a random connected shape based on grid size
     inds = asindices(gi)
     forbidden: Indices = indicator | mapply(neighbors, indicator)
@@ -15044,7 +15037,6 @@ def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
         inds,
         lambda loc: loc not in forbidden
     )
-
     # grow the object (Flood Fill on available bgc cells)
     obj = initset(choice(totuple(inds))) 
     max_cells = ((h * w) - len(forbidden)) // 2
@@ -15058,8 +15050,6 @@ def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
         next_cell = initset(choice(totuple(valid_next)))
         obj |= next_cell
     gi = fill(gi, obj_color, obj)
-
-    # grid out:
     # remove color indicating obj (make background color)
     go = fill(gi, bgc, indicator)
     # change color of connected obj to target color
@@ -15068,8 +15058,7 @@ def generate_009d5c81(diff_lb: float, diff_ub: float) -> dict:
 
 
 def generate_00dbd492(diff_lb: float, diff_ub: float) -> dict:
-    # another example where all possible colors need to be shown in examples
-
+    # NOTE: all possible colors need to be shown in TRAIN examples
     # assumed transformation:
     width_to_fill = {
         5: 8, # width 5 = light blue 8
@@ -15117,22 +15106,12 @@ def generate_00dbd492(diff_lb: float, diff_ub: float) -> dict:
         go = fill(go, fgc, bx)
     return {'input': gi, 'output': go}
    
-
-# NEW ARC-AGI-2 training tasks
-
-
 def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
     # assumed transformation: 
     # graviate other object (with n**2 cells) toward nxn square until it hits
     # change nxn square to mirrored version of other object
-
-    # other must have 2x1 line that contacts first, rest can be random 
-    # convert 2x2 square to mirrored version of other object
-
-    # make it harder:
-    # random object and background colors
-    # random grid shape and 2x2 locations 
-    # random other object
+    # other must have nx1 line that contacts first, rest can be random 
+    # convert nxn square to mirrored version of other object
     h = unifint(diff_lb, diff_ub, (12, 30))
     w = unifint(diff_lb, diff_ub, (12, 30))
     # background can be any _other_ color
@@ -15147,7 +15126,7 @@ def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
     gi = fill(gi, tgtc, tgt)
     neinei = mapply(neighbors, mapply(neighbors, tgt))
     empty = asindices(gi) - neinei
-    dirs = [(0,1), (1,0), (0,-1), (-1,0)]
+    dirs = [RIGHT, DOWN, LEFT, UP]
     shuffle(dirs)
     obj_dir = None
     for d in dirs:
@@ -15161,13 +15140,13 @@ def generate_11dc524f(diff_lb: float, diff_ub: float) -> dict:
             break
     if obj_dir is None: 
         return generate_11dc524f(diff_lb, diff_ub)
-    if obj_dir == (0,1):
+    if obj_dir == RIGHT:
         empty = sfilter(empty, lambda loc: loc[1] > rightmost(neinei))
-    elif obj_dir == (1,0):
+    elif obj_dir == DOWN:
         empty = sfilter(empty, lambda loc: loc[0] > lowermost(neinei))
-    elif obj_dir == (0,-1):
+    elif obj_dir == LEFT:
         empty = sfilter(empty, lambda loc: loc[1] < leftmost(neinei))
-    elif obj_dir == (-1,0):
+    elif obj_dir == UP:
         empty = sfilter(empty, lambda loc: loc[0] < uppermost(neinei))
     # grow the object (Flood Fill on available bgc cells)
     if obj_dir[0] == 0:
@@ -15233,3 +15212,54 @@ def generate_0b17323b(diff_lb: float, diff_ub: float) -> dict:
         go = fill(go, 2, corner)
         corner = shift(corner, (di, dj))
     return {'input': gi, 'output': go}
+
+
+def generate_1478ab18(diff_lb: float, diff_ub: float) -> dict:
+    # input grid always has 4 cells that almost form corners of a square
+    # one corner is moved inward by 1 cell (towards center of square)
+    # assumed transformation:
+    # create a triangle with right angle where the inward corner is 
+    # that connects to adjacent corners
+    h = unifint(diff_lb, diff_ub, (10, 30))
+    w = unifint(diff_lb, diff_ub, (10, 30))
+    colors = interval(0, 10, 1)
+    bgc, fgc, tric = sample(colors, 3)
+    gi = canvas(bgc, (h,w))
+    l = unifint(diff_lb, diff_ub, (4, min(h, w)))
+    corners = frozenset({(0,0), (l-1,0), (0,l-1), (l-1,l-1)})
+    chosen = choice(totuple(corners))
+    if chosen == ulcorner(corners):
+        inward = shift(initset(chosen), (1,1))
+        hypotenuse = connect(llcorner(corners), urcorner(corners))
+        horizontal = connect(ulcorner(corners), urcorner(corners))
+        vertical = connect(ulcorner(corners), llcorner(corners))
+    elif chosen == urcorner(corners):
+        inward = shift(initset(chosen), (1,-1))
+        hypotenuse = connect(ulcorner(corners), lrcorner(corners))
+        horizontal = connect(ulcorner(corners), urcorner(corners))
+        vertical = connect(urcorner(corners), lrcorner(corners))
+    elif chosen == llcorner(corners):
+        inward = shift(initset(chosen), (-1,1))
+        hypotenuse = connect(ulcorner(corners), lrcorner(corners))
+        horizontal = connect(llcorner(corners), lrcorner(corners))
+        vertical = connect(ulcorner(corners), llcorner(corners))
+    elif chosen == lrcorner(corners):
+        inward = shift(initset(chosen), (-1,-1))
+        hypotenuse = connect(llcorner(corners), urcorner(corners))
+        horizontal = connect(llcorner(corners), lrcorner(corners))
+        vertical = connect(urcorner(corners), lrcorner(corners))
+    chosen = initset(chosen)
+    tri = chosen | hypotenuse | horizontal | vertical
+    corners -= chosen
+    print(corners)
+    corners |= inward
+    print(corners)
+    ul = (randint(0, h-l), randint(0, w-l))
+    corners = shift(corners, ul)
+    tri = shift(tri, ul)
+    gi = fill(gi, fgc, corners)
+    go = tuple(e for e in gi)
+    go = fill(go, tric, tri)
+    go = fill(go, fgc, corners)
+    return {'input': gi, 'output': go}
+    
