@@ -15248,9 +15248,8 @@ def generate_1478ab18(diff_lb: float, diff_ub: float) -> dict:
         hypotenuse = connect(llcorner(corners), urcorner(corners))
         horizontal = connect(llcorner(corners), lrcorner(corners))
         vertical = connect(urcorner(corners), lrcorner(corners))
-    chosen = initset(chosen)
-    tri = chosen | hypotenuse | horizontal | vertical
-    corners -= chosen
+    tri = hypotenuse | horizontal | vertical
+    corners -= initset(chosen)
     corners |= inward
     ul = (randint(0, h-l), randint(0, w-l))
     corners = shift(corners, ul)
