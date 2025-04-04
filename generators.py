@@ -15260,3 +15260,37 @@ def generate_1478ab18(diff_lb: float, diff_ub: float) -> dict:
     go = fill(go, fgc, corners)
     return {'input': gi, 'output': go}
     
+def generate_22425bda(diff_lb: float, diff_ub: float) -> dict:
+    # order the lines
+    h = unifint(diff_lb, diff_ub, (10, 30))
+    w = unifint(diff_lb, diff_ub, (10, 30))
+    colors = interval(0, 10, 1)
+    c = unifint(diff_lb, diff_ub, (1, 8))
+    order = sample(colors, c+1) # plus 1 for background
+    bgc = order.pop()
+    go = (tuple(order[::-1]),)
+    gi = canvas(bgc, (h,w))
+    inds = asindices(gi)
+    prev: Indices = frozenset()
+    while order:
+        color = order.pop()
+        # just make sure every line intersects previous line
+        line: Indices = frozenset()
+        while True:
+            if choice((True, False)): # top or bottom
+                i = randint(0, w-1)
+                j, dj = choice(((0,1),(w-1,-1)))
+                di = choice((0,1))
+                di = -di if i > w // 2 else di
+                line = shoot((i,j), (di,dj))
+            else: # left or right side
+                i, di = choice(((0,1),(h-1,-1)))
+                j = randint(0, h-1)
+                dj = choice((0,1))
+                dj = -dj if j > w // 2 else dj
+                line = shoot((i,j), (di,dj))
+            if not prev or (not prev.issubset(line) and line.intersection(prev)):
+                break
+        gi = fill(gi, color, line)
+        prev = sfilter(line, lambda loc: loc in inds)
+    return {'input': gi, 'output': go}
