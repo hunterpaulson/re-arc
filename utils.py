@@ -49,6 +49,28 @@ def is_grid(
         return False
     return True
 
+def is_line(
+    grid: Any
+) -> bool:
+    """
+    returns True if and only if argument is a valid grid
+    """
+    if not isinstance(grid, tuple):
+        return False
+    if not len(grid) == 1: # height must be 1
+        return False
+    if not all(isinstance(r, tuple) for r in grid):
+        return False
+    # if not all(0 < len(r) <= 30 for r in grid):
+        # return False # width can be any length
+    if not len(set(len(r) for r in grid)) == 1:
+        return False
+    if not all(all(isinstance(x, int) for x in r) for r in grid):
+        return False
+    if not all(all(0 <= x <= 9 for x in r) for r in grid):
+        return False
+    return True
+
 
 def strip_prefix(
     string: str,
@@ -118,6 +140,45 @@ def plot_task(
     if title is not None:
         figure.suptitle(title, fontsize=20)
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.show()
+
+
+def plot_task_1d(
+    task: List[dict],
+    title: str = None
+) -> None:
+    """
+    Displays a task with input and output grids transposed,
+    and output shown to the left of the input.
+    All examples are plotted in a single row.
+    """
+    cmap = ListedColormap([
+        '#000', '#0074D9', '#FF4136', '#2ECC40', '#FFDC00',
+        '#AAAAAA', '#F012BE', '#FF851B', '#7FDBFF', '#870C25'
+    ])
+    norm = Normalize(vmin=0, vmax=9)
+    args = {'cmap': cmap, 'norm': norm}
+    
+    n_examples = len(task)
+    ncols = n_examples * 2 # Output and Input side-by-side for each example
+
+    max_len = max(len(example[io][0]) for example in task for io in ['input', 'output'])
+    print(f"{max_len=}")
+    figure_size = (3, max_len)
+    figure, axes = plt.subplots(1, ncols, figsize=figure_size)
+    for i, example in enumerate(task):
+        
+        input_T = tuple((element,) for element in example['input'][0])    
+        output_T = tuple((element,) for element in example['output'][0])
+
+        axes[2*i].imshow(input_T, **args)
+        axes[2*i].axis('off')
+        axes[2*i + 1].imshow(output_T, **args)
+        axes[2*i + 1].axis('off')
+
+    if title is not None:
+        figure.suptitle(title, fontsize=20)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
 
