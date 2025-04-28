@@ -1,10 +1,11 @@
 from dsl import *
 from utils import *
 
-MAX_LEN = 30 # max length of a single line
+MAX_LEN = 10 # max length of a single line
 
 #  NOTE: HUGE prior assumption that 0 is always background
 BGC = 0
+COLORS = interval(1, 10, 1)
 # why?:
 # if colors are truly random, then 'background' has to be > 50% of total sequence length
 # this either restricts our task space 
@@ -14,34 +15,222 @@ BGC = 0
 # this means that all color intervals should start at 1
 # reduces the number of colors to 9
 
-
-def generate_sum_1c(diff_lb: float, diff_ub: float) -> dict:
-    """ concat the objects of a single color"""
-    w = unifint(diff_lb, diff_ub, (2, MAX_LEN))
-    colors = interval(1, 10, 1) 
-    fgc = choice(colors)
-    gi = canvas(BGC, (1, w))
-    n = unifint(diff_lb, diff_ub, (1, w-1))
-    fg = sample(totuple(asindices(gi)), n)
-    gi = fill(gi, fgc, fg)
-    go = canvas(fgc, (1, n))
+def generate_count_lines_1c_remove_background(diff_lb: float, diff_ub: float) -> dict:
+    """ count the lines of a single color """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    c = choice(colors)
+    gi = ((),)
+    for _ in range(n):
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+    go = canvas(BGC, (1, n))
     return {'input': gi, 'output': go}
 
-# def generate_sum_maxC(diff_lb: float, diff_ub: float) -> dict:
-#     w = unifint(diff_lb, diff_ub, (3, MAX_LEN))
-#     colors = interval(1, 10, 1) 
-#     fgc = sample(colors, 1)
-#     colors = remove(fgc, colors)
-#     gi = canvas(BGC, (1, w))
-#     n_fg = unifint(diff_lb, diff_ub, (1, (w-1)//2))
-#     fg = sample(totuple(asindices(gi)), n_fg)
-#     n_maxC = randint(1, n_fg-2)
-#     c_maxC = sample(fg, n_maxC)
-#     gi = fill(gi, fgc, c_maxC)
+def generate_count_lines_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ count the number of lines """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+    go = canvas(BGC, (1, n))
+    return {'input': gi, 'output': go}
 
-        
-#     go = canvas(fgc, (1, n_maxC))
-#     return {'input': gi, 'output': go}
+def generate_count_lines_remove_background(diff_lb: float, diff_ub: float) -> dict:
+    """ count the number of lines, removing background """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = canvas(BGC, (1, n))
+    return {'input': gi, 'output': go}
+    
+def generate_count_max_lines_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ count the number of lines of the color with the most lines """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    freq = [0] * 10
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+        freq[c] += 1
+    # TODO: sort falls back to second key if first key is a tie so model may learn ordering of colors
+    ordered = sorted([(count, c) for c, count in enumerate(freq)], reverse=True)
+    # if there's a tie, add an extra line to break the tie
+    max_c = ordered[0][1]
+    if ordered[0][0] == ordered[1][0]:
+        if max_c == prev_c: # if the most frequent color is the same as the previous color, use the second most frequent color
+            max_c = ordered[1][1]
+        gi = hconcat(gi, canvas(max_c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        freq[max_c] += 1
+    go = canvas(max_c, (1, freq[max_c]))
+    return {'input': gi, 'output': go}
+
+def generate_count_max_lines_remove_background(diff_lb: float, diff_ub: float) -> dict:
+    """ count the lines of the color with the most lines, removing background """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    freq = [0] * 10
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+        freq[c] += 1
+    ordered = sorted([(count, c) for c, count in enumerate(freq)], reverse=True)
+    # if there's a tie, add an extra line to break the tie
+    max_c = ordered[0][1]
+    if ordered[0][0] == ordered[1][0]:
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+        elif max_c == prev_c: # if the most frequent color is the same as the previous color, use the second most frequent color
+            max_c = ordered[1][1]
+        gi = hconcat(gi, canvas(max_c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        freq[max_c] += 1
+    go = canvas(max_c, (1, freq[max_c]))
+    return {'input': gi, 'output': go}
+
+def generate_sum_1c_remove_background(diff_lb: float, diff_ub: float) -> dict:
+    """ concat the objects of a single color, removing background """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1) 
+    fgc = choice(colors)
+    gi = ((),)
+    if choice([True, False]):
+        gi = hconcat(canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))), gi)
+    for _ in range(n):
+        gi = hconcat(gi, canvas(fgc, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10))))) # TODO: always ends with background
+    go = canvas(fgc, (1, colorcount(gi, fgc)))
+    return {'input': gi, 'output': go}
+
+def generate_sum_max_lines_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ sum the lines of the color with the most lines"""
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    freq = [(0, 0)] * 10
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        freq[c] = (freq[c][0] + 1, freq[c][1] + l)
+    ordered = sorted([(count, c) for c, (count, _) in enumerate(freq)], reverse=True)
+    # if there's a tie, add an extra line to break the tie
+    max_c = ordered[0][1]
+    if ordered[0][0] == ordered[1][0]:
+        if max_c == prev_c: # if the most frequent color is the same as the previous color, use the second most frequent color
+            max_c = ordered[1][1]
+        gi = hconcat(gi, canvas(max_c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        freq[max_c] += 1
+    go = canvas(max_c, (1, freq[max_c][1]))
+    return {'input': gi, 'output': go}
+
+def generate_sum_max_lines_remove_background(diff_lb: float, diff_ub: float) -> dict:
+    """ sum the lines of the color with the most lines, removing background """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    freq = [(0, 0)] * 10
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        freq[c] = (freq[c][0] + 1, freq[c][1] + l)
+    ordered = sorted([(count, c) for c, (count, _) in enumerate(freq)], reverse=True)
+    # if there's a tie, add an extra line to break the tie
+    max_c = ordered[0][1]
+    if ordered[0][0] == ordered[1][0]:
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+        elif max_c == prev_c: # if the most frequent color is the same as the previous color, use the second most frequent color
+            max_c = ordered[1][1]
+        gi = hconcat(gi, canvas(max_c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        freq[max_c] += 1
+    go = canvas(max_c, (1, freq[max_c][1]))
+    return {'input': gi, 'output': go}
+
+def generate_sum_max_combined_length_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ sum the lines of the color with the most lines, removing background """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    combined_len = [0] * 10
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        combined_len[c] += l
+    ordered = sorted([(length, c) for c, length in enumerate(combined_len)], reverse=True)
+    # if there's a tie, add an extra line to break the tie
+    max_c = ordered[0][1]
+    if ordered[0][0] == ordered[1][0]:
+        if max_c == prev_c: # if the most frequent color is the same as the previous color, use the second most frequent color
+            max_c = ordered[1][1]
+        gi = hconcat(gi, canvas(max_c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        combined_len[max_c] += 1
+    go = canvas(max_c, (1, combined_len[max_c]))
+    return {'input': gi, 'output': go}
+
+def generate_sum_max_combined_length_remove_background(diff_lb: float, diff_ub: float) -> dict:
+    """ sum the lines of the color with the most lines, removing background """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    combined_len = [0] * 10
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        combined_len[c] += l
+    ordered = sorted([(length, c) for c, length in enumerate(combined_len)], reverse=True)
+    # if there's a tie, add an extra line to break the tie
+    max_c = ordered[0][1]
+    if ordered[0][0] == ordered[1][0]:
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+        elif max_c == prev_c: # if the most frequent color is the same as the previous color, use the second most frequent color
+            max_c = ordered[1][1]
+        gi = hconcat(gi, canvas(max_c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        combined_len[max_c] += 1
+    go = canvas(max_c, (1, combined_len[max_c]))
+    return {'input': gi, 'output': go}
 
 # NOTE: just reverse the test cases for sort DESCENDING
 def generate_sort_increasing_no_background(diff_lb: float, diff_ub: float) -> dict:
@@ -50,10 +239,9 @@ def generate_sort_increasing_no_background(diff_lb: float, diff_ub: float) -> di
     """
     while True:
         n = unifint(diff_lb, diff_ub, (2, 9))
-        max_len = unifint(diff_lb, diff_ub, (9, 30))
         colors = interval(1, 10, 1)
         cs = sample(colors, n)
-        ls = sample(interval(1, max_len, 1), n) # lengths are unique
+        ls = sample(interval(1, MAX_LEN, 1), n) # lengths are unique
         color_length_pairs = list(zip(cs, ls))
         lines = [canvas(c, (1, l)) for c, l in color_length_pairs]
         gi = lines[0]
@@ -74,10 +262,9 @@ def generate_sort_increasing_remove_background(diff_lb: float, diff_ub: float) -
     """
     while True:
         n = unifint(diff_lb, diff_ub, (2, 9))
-        max_len = unifint(diff_lb, diff_ub, (9, 30))
         colors = interval(1, 10, 1)
         cs = sample(colors, n)
-        ls = sample(interval(1, max_len, 1), n) # lengths are unique
+        ls = sample(interval(1, MAX_LEN, 1), n) # lengths are unique
         color_length_pairs = list(zip(cs, ls))
         lines = [canvas(c, (1, l)) for c, l in color_length_pairs]
         if choice([True, False]):
@@ -104,10 +291,9 @@ def generate_sort_nondecreasing_no_background(diff_lb: float, diff_ub: float) ->
     """
     while True:
         n = unifint(diff_lb, diff_ub, (2, 9))
-        max_len = unifint(diff_lb, diff_ub, (9, 30))
         colors = interval(1, 10, 1)
         cs = sample(colors, n)
-        rnge = interval(1, max_len, 1)
+        rnge = interval(1, MAX_LEN, 1)
         ls = [choice(rnge) for _ in range(n)] # NOTE: lengths may not be unique
         color_length_pairs = list(zip(cs, ls))
         lines = [canvas(c, (1, l)) for c, l in color_length_pairs]
@@ -128,10 +314,9 @@ def generate_sort_nondecreasing_remove_background(diff_lb: float, diff_ub: float
     """
     while True:
         n = unifint(diff_lb, diff_ub, (2, 9))
-        max_len = unifint(diff_lb, diff_ub, (9, 30))
         colors = interval(1, 10, 1)
         cs = sample(colors, n)
-        rnge = interval(1, max_len, 1)
+        rnge = interval(1, MAX_LEN, 1)
         ls = [choice(rnge) for _ in range(n)] # NOTE: lengths may not be unique
         color_length_pairs = list(zip(cs, ls))
         lines = [canvas(c, (1, l)) for c, l in color_length_pairs]
