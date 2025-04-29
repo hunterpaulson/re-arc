@@ -519,7 +519,7 @@ def generate_sort_increasing_remove_background(diff_lb: float, diff_ub: float) -
     return {'input': gi, 'output': go}
 
 def generate_sort_nondecreasing_no_background(diff_lb: float, diff_ub: float) -> dict:
-    """ sort the lines of _distinct_ length and color in increasing order of length 
+    """ sort the lines of _distinct_ color in increasing order of length 
         lines may have _duplicate_ length, if so preserve the order of appearance
     """
     while True:
@@ -542,7 +542,7 @@ def generate_sort_nondecreasing_no_background(diff_lb: float, diff_ub: float) ->
     return {'input': gi, 'output': go}
 
 def generate_sort_nondecreasing_remove_background(diff_lb: float, diff_ub: float) -> dict:
-    """ sort (and concat by removing background) the lines of _distinct_ length and color in increasing order of length 
+    """ sort (and concat by removing background) the lines of _distinct_ color in increasing order of length 
         lines may have _duplicate_ length, if so preserve the order of appearance
     """
     while True:
@@ -570,6 +570,8 @@ def generate_sort_nondecreasing_remove_background(diff_lb: float, diff_ub: float
         if gi != go:
             break
     return {'input': gi, 'output': go}
+
+# NOTE: these have human priors so maybe they aren't in the spirit of ARC
 
 def generate_addition(diff_lb: float, diff_ub: float) -> dict:
     """ add two lines """
@@ -632,4 +634,12 @@ def generate_division(diff_lb: float, diff_ub: float) -> dict:
     go = canvas(c_a, (1, l_a // l_b))
     return {'input': gi, 'output': go}
 
-# def generate_modulo(diff_lb: float, diff_ub: float) -> dict:
+def generate_square(diff_lb: float, diff_ub: float) -> dict:
+    """ square a line """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    c = choice(colors)
+    l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = canvas(c, (1, l))
+    go = canvas(c, (1, l * l))
+    return {'input': gi, 'output': go}
