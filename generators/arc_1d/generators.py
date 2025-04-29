@@ -365,6 +365,106 @@ def generate_sum_max_combined_length_remove_background(diff_lb: float, diff_ub: 
     go = canvas(max_c, (1, combined_len[max_c]))
     return {'input': gi, 'output': go}
 
+# alternatively, delete odd length lines
+def generate_keep_even_length(diff_lb: float, diff_ub: float) -> dict:
+    """ keep the lines of even length, preserving original spacing """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    keep = []
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        line = canvas(c, (1, l))
+        width_before = width(gi)
+        gi = hconcat(gi, line)
+        if l % 2 == 0:
+            obj = asobject(line)
+            obj = shift(obj, (0, width_before))
+            keep.append(obj)
+    go = canvas(BGC, (1, width(gi)))
+    for obj in keep:
+        go = paint(go, obj)
+    return {'input': gi, 'output': go}
+
+# alternatively, delete even length lines
+def generate_keep_odd_length(diff_lb: float, diff_ub: float) -> dict:
+    """ keep the lines of odd length, preserving original spacing """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    keep = []
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        line = canvas(c, (1, l))
+        width_before = width(gi)
+        gi = hconcat(gi, line)
+        if l % 2 == 1:
+            obj = asobject(line)
+            obj = shift(obj, (0, width_before))
+            keep.append(obj)
+    go = canvas(BGC, (1, width(gi)))
+    for obj in keep:
+        go = paint(go, obj)
+    return {'input': gi, 'output': go}
+
+# NOTE: for small MAX_LINES, this may look like delete colors that only occur once
+# alternatively, delete colors with an odd number of lines
+def generate_keep_even_count(diff_lb: float, diff_ub: float) -> dict:
+    """ keep the colors with an even number of lines, preserving original spacing """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    objs_of_color = [[] for _ in range(10)]
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        line = canvas(c, (1, l))
+        width_before = width(gi)
+        gi = hconcat(gi, line)
+        obj = asobject(line)
+        obj = shift(obj, (0, width_before))
+        objs_of_color[c].append(obj)
+    go = canvas(BGC, (1, width(gi)))
+    for objs in objs_of_color:
+        if len(objs) % 2 == 0:
+            for obj in objs:
+                go = paint(go, obj)
+    return {'input': gi, 'output': go}
+
+# NOTE: for small MAX_LINES, this may be a no-op or look like delete colors that occur more than once
+# alternatively, delete colors with an odd number of lines
+def generate_keep_odd_count(diff_lb: float, diff_ub: float) -> dict:
+    """ keep the colors with an odd number of lines, preserving original spacing """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    objs_of_color = [[] for _ in range(10)]
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        line = canvas(c, (1, l))
+        width_before = width(gi)
+        gi = hconcat(gi, line)
+        obj = asobject(line)
+        obj = shift(obj, (0, width_before))
+        objs_of_color[c].append(obj)
+    go = canvas(BGC, (1, width(gi)))
+    for objs in objs_of_color:
+        if len(objs) % 2 == 1:
+            for obj in objs:
+                go = paint(go, obj)
+    return {'input': gi, 'output': go}   
+
 # NOTE: just reverse the test cases for sort DESCENDING
 def generate_sort_increasing_no_background(diff_lb: float, diff_ub: float) -> dict:
     """ sort the lines of _distinct_ length and color in increasing order of length 
@@ -470,3 +570,66 @@ def generate_sort_nondecreasing_remove_background(diff_lb: float, diff_ub: float
         if gi != go:
             break
     return {'input': gi, 'output': go}
+
+def generate_addition(diff_lb: float, diff_ub: float) -> dict:
+    """ add two lines """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    c_a, c_b = choice(colors), choice(colors) # can be same color
+    l_a = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    l_b = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    obj_a = canvas(c_a, (1, l_a))
+    obj_b = canvas(c_b, (1, l_b))
+    gi = hconcat(obj_a, canvas(BGC, (1, 1)))
+    gi = hconcat(gi, obj_b)
+    go = canvas(c_a, (1, l_a + l_b))
+    return {'input': gi, 'output': go}
+
+def generate_subtraction(diff_lb: float, diff_ub: float) -> dict:
+    """ subtract two lines """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    c_a, c_b = choice(colors), choice(colors) # can be same color
+    l_a = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    l_b = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    if l_a == l_b:
+        l_a = l_a + 1
+    elif l_a < l_b:
+        l_a, l_b = l_b, l_a
+    obj_a = canvas(c_a, (1, l_a))
+    obj_b = canvas(c_b, (1, l_b))
+    gi = hconcat(obj_a, canvas(BGC, (1, 1)))
+    gi = hconcat(gi, obj_b)
+    go = canvas(c_a, (1, l_a - l_b))
+    return {'input': gi, 'output': go}
+
+def generate_multiplication(diff_lb: float, diff_ub: float) -> dict:
+    """ multiply two lines """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    c_a, c_b = choice(colors), choice(colors) # can be same color
+    l_a = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    l_b = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    obj_a = canvas(c_a, (1, l_a))
+    obj_b = canvas(c_b, (1, l_b))
+    gi = hconcat(obj_a, canvas(BGC, (1, 1)))
+    gi = hconcat(gi, obj_b)
+    go = canvas(c_a, (1, l_a * l_b))
+    return {'input': gi, 'output': go}
+
+def generate_division(diff_lb: float, diff_ub: float) -> dict:
+    """ divide one line by another line """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    c_a, c_b = choice(colors), choice(colors) # can be same color
+    l_b = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    # make l_a some multiple of l_b
+    l_a = l_b * unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    obj_a = canvas(c_a, (1, l_a))
+    obj_b = canvas(c_b, (1, l_b))
+    gi = hconcat(obj_a, canvas(BGC, (1, 1)))
+    gi = hconcat(gi, obj_b)
+    go = canvas(c_a, (1, l_a // l_b))
+    return {'input': gi, 'output': go}
+
+# def generate_modulo(diff_lb: float, diff_ub: float) -> dict:
