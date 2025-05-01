@@ -311,7 +311,7 @@ def generate_sum_min_lines_remove_background(diff_lb: float, diff_ub: float) -> 
     return {'input': gi, 'output': go}
 
 def generate_sum_max_combined_length_no_background(diff_lb: float, diff_ub: float) -> dict:
-    """ sum the lines of the color with the most lines, removing background """
+    """ sum the lines of the color the longest combined length, removing background """
     n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
     colors = interval(1, 10, 1)
     gi = ((),)
@@ -335,7 +335,7 @@ def generate_sum_max_combined_length_no_background(diff_lb: float, diff_ub: floa
     return {'input': gi, 'output': go}
 
 def generate_sum_max_combined_length_remove_background(diff_lb: float, diff_ub: float) -> dict:
-    """ sum the lines of the color with the most lines, removing background """
+    """ sum the lines of the color with the longest combined length, removing background """
     n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
     colors = interval(1, 10, 1)
     gi = ((),)
@@ -698,6 +698,186 @@ def generate_keep_min_length_multiple(diff_lb: float, diff_ub: float) -> dict:
         for obj in objs:
             if width(obj) == min_length:
                 go = paint(go, obj)
+    return {'input': gi, 'output': go}
+
+# NOTE: this is a no-op
+def generate_copy_0x(diff_lb: float, diff_ub: float) -> dict:
+    """ concatenate a copy of the input with itself"""
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = gi
+    return {'input': gi, 'output': go}
+
+def generate_copy_1x(diff_lb: float, diff_ub: float) -> dict:
+    """ concatenate a copy of the input with itself"""
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN // 2))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = hconcat(gi, gi)
+    return {'input': gi, 'output': go}
+
+def generate_copy_2x(diff_lb: float, diff_ub: float) -> dict:
+    """ concatenate a copy of the input with itself twice"""
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN // 3))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = hconcat(gi, hconcat(gi, gi))
+    return {'input': gi, 'output': go}
+
+def generate_mirror(diff_lb: float, diff_ub: float) -> dict:
+    """copy the input and concatenate it with a mirrored copy of the input"""
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN // 2))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = hconcat(gi, vmirror(gi))
+    return {'input': gi, 'output': go}
+
+def generate_mirror_copy_mirror(diff_lb: float, diff_ub: float) -> dict:
+    """ concatenate a mirrored copy of the input, a copy of the input, and a mirrored copy of the input"""
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN // 3))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = hconcat(vmirror(gi), hconcat(gi, vmirror(gi)))
+    return {'input': gi, 'output': go}
+
+def generate_select_longest_distinct(diff_lb: float, diff_ub: float) -> dict:
+    """ output the longest line """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    go = None
+    lengths = sample(interval(1, MAX_LEN+1, 1), n)
+    max_length = max(lengths)
+    prev_c = None
+    for l in lengths:
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        line = canvas(c, (1, l))
+        gi = hconcat(gi, line)
+        if l == max_length:
+            go = line
+    return {'input': gi, 'output': go}
+
+def generate_select_longest_multiple(diff_lb: float, diff_ub: float) -> dict:
+    """ output the lines with longest length in the order of appearance """
+    n = unifint(diff_lb, diff_ub, (3, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    go = ((),)
+    max_length = choice(interval(2, MAX_LEN+1, 1))
+    lengths = [max_length] * 2 # at least two with max length
+    lengths.extend(choices(interval(1, max_length+1, 1), k=n-2))
+    shuffle(lengths)
+    prev_c = None
+    for l in lengths:
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        line = canvas(c, (1, l))
+        gi = hconcat(gi, line)
+        if l == max_length:
+            go = hconcat(go, line)
+    return {'input': gi, 'output': go}
+
+def generate_select_shortest_distinct(diff_lb: float, diff_ub: float) -> dict:
+    """ output the shortest line """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    go = None
+    lengths = sample(interval(1, MAX_LEN+1, 1), n)
+    min_length = min(lengths)
+    prev_c = None
+    for l in lengths:
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        line = canvas(c, (1, l))
+        gi = hconcat(gi, line)
+        if l == min_length:
+            go = line
+    return {'input': gi, 'output': go}
+
+def generate_select_shortest_multiple(diff_lb: float, diff_ub: float) -> dict:
+    """ output the lines with shortest length in the order of appearance """
+    n = unifint(diff_lb, diff_ub, (3, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    go = ((),)
+    min_length = choice(interval(1, MAX_LEN, 1))
+    lengths = [min_length] * 2 # at least two with min length
+    lengths.extend(choices(interval(min_length, MAX_LEN+1, 1), k=n-2))
+    shuffle(lengths)
+    prev_c = None
+    for l in lengths:
+        c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        line = canvas(c, (1, l))
+        gi = hconcat(gi, line)
+        if l == min_length:
+            go = hconcat(go, line)
+    return {'input': gi, 'output': go}
+
+def generate_select_longest_connected(diff_lb: float, diff_ub: float) -> dict:
+    """ output the longest connected sequence of lines """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    objs = []
+    current = None
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]): # randomly break the sequence
+            if current is not None:
+                objs.append(current)
+                current = None
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        prev_c = c
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        line = canvas(c, (1, l))
+        gi = hconcat(gi, line)
+        if current is None:
+            current = line
+        else:
+            current = hconcat(current, line)
+    objs.append(current)
+    if choice([True, False]):
+        gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+    go = max(objs, key=lambda x: len(x[0]))
+    return {'input': gi, 'output': go}
+
+def generate_select_most_frequent_line_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ output the line that appears the most """
+    n = unifint(diff_lb, diff_ub, (3, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    mode_length = choice(interval(1, MAX_LEN, 1))
+    mode_color = choice(colors)
+    m = unifint(diff_lb, diff_ub, (2, (n+1)//2)) # number of mode lines
+    mode_lengths = [mode_length] * m
+    go = canvas(mode_color, (1, mode_length))
+    # NOTE: technically possible with high MAX_LINES that another mode is generated, but hopefully unlikely
+    other_lengths = choices(interval(1, MAX_LEN+1, 1), k=n-m)
+    mode_prev = False
+    prev_c = None
+    while mode_lengths or other_lengths:
+        place_mode = choice([True, False])
+        if not mode_lengths or mode_prev:
+            place_mode = False
+        elif not other_lengths or len(mode_lengths) > len(other_lengths): # will only be greater by one since m <= (n+1)//2
+            place_mode = True
+
+        if place_mode:
+            gi = hconcat(gi, canvas(mode_color, (1, mode_lengths.pop())))
+            mode_prev = True
+            prev_c = mode_color
+        else:
+            c = choice([color for color in colors if color not in {prev_c, mode_color}])
+            gi = hconcat(gi, canvas(c, (1, other_lengths.pop())))
+            mode_prev = False
+            prev_c = c
     return {'input': gi, 'output': go}
 
 # NOTE: just reverse the test cases for sort DESCENDING
