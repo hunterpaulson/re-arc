@@ -880,6 +880,45 @@ def generate_select_most_frequent_line_no_background(diff_lb: float, diff_ub: fl
             prev_c = c
     return {'input': gi, 'output': go}
 
+def generate_select_most_frequent_line_background(diff_lb: float, diff_ub: float) -> dict:
+    """ output the line that appears the most, ignoring background"""
+    n = unifint(diff_lb, diff_ub, (3, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    mode_length = choice(interval(1, MAX_LEN, 1))
+    mode_color = choice(colors)
+    m = unifint(diff_lb, diff_ub, (2, (n+1)//2)) # number of mode lines
+    mode_lengths = [mode_length] * m
+    go = canvas(mode_color, (1, mode_length))
+    # NOTE: technically possible with high MAX_LINES that another mode is generated, but hopefully unlikely
+    other_lengths = choices(interval(1, MAX_LEN+1, 1), k=n-m) # TODO: ensure no other length occurs more than mode length
+    mode_prev = False
+    prev_c = None
+    while mode_lengths or other_lengths:
+        place_mode, gap = choices([True, False], k=2)
+        if not mode_lengths or (not gap and mode_prev):
+            place_mode = False
+        elif not other_lengths or len(mode_lengths) > len(other_lengths): # will only be greater by one since m <= (n+1)//2
+            place_mode = True
+
+        if gap:
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+        if place_mode:
+            gi = hconcat(gi, canvas(mode_color, (1, mode_lengths.pop())))
+            mode_prev = True
+            prev_c = mode_color
+        else:
+            if gap:
+                c = choice(colors)
+            else:
+                c = choice([color for color in colors if color != prev_c])
+            gi = hconcat(gi, canvas(c, (1, other_lengths.pop())))
+            mode_prev = False
+            prev_c = c
+    if choice([True, False]):
+        gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+    return {'input': gi, 'output': go}
+
 def generate_select_most_frequent_color_no_background(diff_lb: float, diff_ub: float) -> dict:
     """ output the the color with the most distinct lines """
     n = unifint(diff_lb, diff_ub, (3, MAX_LINES))
