@@ -743,6 +743,30 @@ def generate_mirror_copy_mirror(diff_lb: float, diff_ub: float) -> dict:
     go = hconcat(vmirror(gi), hconcat(gi, vmirror(gi)))
     return {'input': gi, 'output': go}
 
+def generate_remove_odd_indices(diff_lb: float, diff_ub: float) -> dict:
+    """ replace odd indices with the background color """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES * MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = gi
+    for i in range(n):
+        if i % 2 == 1:
+            go = fill(go, BGC, initset((0, i)))
+    return {'input': gi, 'output': go}
+
+def generate_remove_even_indices(diff_lb: float, diff_ub: float) -> dict:
+    """ replace even indices with the background color """
+    n = unifint(diff_lb, diff_ub, (2, MAX_LINES * MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = gi
+    for i in range(n):
+        if i % 2 == 0:
+            go = fill(go, BGC, initset((0, i)))
+    return {'input': gi, 'output': go}
+
+# def generate_remove_odd_indices_compress(diff_lb: float, diff_ub: float) -> dict:
+
 def generate_pattern_fill_small_hole_1x(diff_lb: float, diff_ub: float) -> dict:
     """ fill a repeating pattern with a hole """
     n = unifint(diff_lb, diff_ub, (3, MAX_LINES)) # repeat pattern at least 3 times
