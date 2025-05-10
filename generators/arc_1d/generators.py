@@ -743,6 +743,103 @@ def generate_mirror_copy_mirror(diff_lb: float, diff_ub: float) -> dict:
     go = hconcat(vmirror(gi), hconcat(gi, vmirror(gi)))
     return {'input': gi, 'output': go}
 
+def generate_pattern_fill_small_hole_1x(diff_lb: float, diff_ub: float) -> dict:
+    """ fill a repeating pattern with a hole """
+    n = unifint(diff_lb, diff_ub, (3, MAX_LINES)) # repeat pattern at least 3 times
+    l = unifint(diff_lb, diff_ub, (2, MAX_LEN)) # pattern length at least 2
+    colors = interval(1, 10, 1)
+    pattern = (tuple(choices(colors, k=l)),)    
+    go = ((),)
+    for _ in range(n):
+        go = hconcat(go, pattern) 
+    hole = asobject(canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, l-1))))) # hole length less than pattern length
+    hole = shift(hole, (0, unifint(diff_lb, diff_ub, (1, n * l - len(hole)))))
+    gi = paint(go, hole)
+    return {'input': gi, 'output': go}
+
+def generate_pattern_fill_large_hole_1x(diff_lb: float, diff_ub: float) -> dict:
+    """ fill a repeating pattern with a large hole """
+    n = unifint(diff_lb, diff_ub, (4, MAX_LINES)) # repeat pattern at least 4 times
+    l = unifint(diff_lb, diff_ub, (2, MAX_LEN)) # pattern length at least 2
+    colors = interval(1, 10, 1)
+    pattern = (tuple(choices(colors, k=l)),)    
+    go = ((),)
+    for _ in range(n):
+        go = hconcat(go, pattern) 
+    # create a hole larger than pattern, but pattern must be visibile at least twice (so you it is visible)
+    hole = asobject(canvas(BGC, (1, unifint(diff_lb, diff_ub, (l + 1, width(go) - 2*l))))) 
+    hole = shift(hole, (0, unifint(diff_lb, diff_ub, (1, n * l - len(hole)))))
+    gi = paint(go, hole)
+    return {'input': gi, 'output': go}
+
+def generate_pattern_fill_small_hole_2x(diff_lb: float, diff_ub: float) -> dict:
+    """ fill a repeating pattern with a hole """
+    n = unifint(diff_lb, diff_ub, (4, MAX_LINES)) # repeat pattern at least 4 times
+    l = unifint(diff_lb, diff_ub, (2, MAX_LEN)) # pattern length at least 2
+    colors = interval(1, 10, 1)
+    pattern = (tuple(choices(colors, k=l)),)    
+    go = ((),)
+    for _ in range(n):
+        go = hconcat(go, pattern) 
+    h1 = asobject(canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, l-1)))))
+    # Place first hole (H1)
+    start1 = unifint(diff_lb, diff_ub, (0, width(go) - width(h1)))
+    h1 = shift(h1, (0, start1))
+    gi = paint(go, h1)
+    h2 = asobject(canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, l-1)))))
+    # Place second hole (H2)
+    valid_h2_starts = []
+    # Valid starting positions for H2 if placed BEFORE H1
+    # H1 is at [start1, start1 + width(h1) - 1]
+    # H2 must end at start1 - 2 or earlier to leave a gap
+    # H2 is [s, s + width(h2) - 1]. So, s + width(h2) - 1 <= start1 - 2
+    # s <= start1 - width(h2) - 1
+    valid_h2_starts.extend(range(0, start1 - width(h2)))
+    # Valid starting positions for H2 if placed AFTER H1
+    # H1 is at [start1, start1 + width(h1) - 1]
+    # H2 must start at start1 + width(h1) + 1 or later to leave a gap
+    # H2 is [s, s + width(h2) - 1]. s + width(h2) - 1 < W
+    # s <= width(go) - width(h2)
+    valid_h2_starts.extend(range(start1 + width(h1) + 1, width(go) - width(h2) + 1))
+    start2 = choice(valid_h2_starts)
+    h2 = shift(h2, (0, start2))
+    gi = paint(gi, h2)
+    return {'input': gi, 'output': go}
+
+def generate_pattern_fill_large_hole_2x(diff_lb: float, diff_ub: float) -> dict:
+    """ fill a repeating pattern with a large hole """
+    n = unifint(diff_lb, diff_ub, (5, MAX_LINES)) # repeat pattern at least 5 times
+    l = unifint(diff_lb, diff_ub, (2, MAX_LEN)) # pattern length at least 2
+    colors = interval(1, 10, 1)
+    pattern = (tuple(choices(colors, k=l)),)    
+    go = ((),)
+    for _ in range(n):
+        go = hconcat(go, pattern) 
+    h1 = asobject(canvas(BGC, (1, unifint(diff_lb, diff_ub, (l+1, width(go)//2 - l)))))
+    # Place first hole (H1)
+    start1 = unifint(diff_lb, diff_ub, (0, width(go) - width(h1)))
+    h1 = shift(h1, (0, start1))
+    gi = paint(go, h1)
+    h2 = asobject(canvas(BGC, (1, unifint(diff_lb, diff_ub, (l+1, width(go)//2 - l)))))
+    # Place second hole (H2)
+    valid_h2_starts = []
+    # Valid starting positions for H2 if placed BEFORE H1
+    # H1 is at [start1, start1 + width(h1) - 1]
+    # H2 must end at start1 - 2 or earlier to leave a gap
+    # H2 is [s, s + width(h2) - 1]. So, s + width(h2) - 1 <= start1 - 2
+    # s <= start1 - width(h2) - 1
+    valid_h2_starts.extend(range(0, start1 - width(h2)))
+    # Valid starting positions for H2 if placed AFTER H1
+    # H1 is at [start1, start1 + width(h1) - 1]
+    # H2 must start at start1 + width(h1) + 1 or later to leave a gap
+    # H2 is [s, s + width(h2) - 1]. s + width(h2) - 1 < W
+    # s <= width(go) - width(h2)
+    valid_h2_starts.extend(range(start1 + width(h1) + 1, width(go) - width(h2) + 1))
+    start2 = choice(valid_h2_starts)
+    h2 = shift(h2, (0, start2))
+    gi = paint(gi, h2)
+    return {'input': gi, 'output': go}
+
 def generate_select_longest_distinct(diff_lb: float, diff_ub: float) -> dict:
     """ output the longest line """
     n = unifint(diff_lb, diff_ub, (2, MAX_LINES))
