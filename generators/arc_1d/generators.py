@@ -702,6 +702,15 @@ def generate_keep_min_length_multiple(diff_lb: float, diff_ub: float) -> dict:
                 go = paint(go, obj)
     return {'input': gi, 'output': go}
 
+# NOTE: when reversed this is keep_last_half
+def generate_keep_first_half(diff_lb: float, diff_ub: float) -> dict:
+    """ keep the first half of the input """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN // 2))
+    colors = interval(1, 10, 1)
+    go = (tuple(choices(colors, k=n)),)
+    gi = hconcat(go, (tuple(choices(colors, k=n)),))
+    return {'input': gi, 'output': go}
+
 # NOTE: this is a no-op
 def generate_copy_0x(diff_lb: float, diff_ub: float) -> dict:
     """ generate a copy of the input"""
@@ -764,8 +773,6 @@ def generate_remove_even_indices(diff_lb: float, diff_ub: float) -> dict:
         if i % 2 == 0:
             go = fill(go, BGC, initset((0, i)))
     return {'input': gi, 'output': go}
-
-# def generate_remove_odd_indices_compress(diff_lb: float, diff_ub: float) -> dict:
 
 def generate_pattern_fill_small_hole_1x(diff_lb: float, diff_ub: float) -> dict:
     """ fill a repeating pattern with a hole """
