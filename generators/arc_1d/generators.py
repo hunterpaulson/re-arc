@@ -702,9 +702,9 @@ def generate_keep_min_length_multiple(diff_lb: float, diff_ub: float) -> dict:
                 go = paint(go, obj)
     return {'input': gi, 'output': go}
 
-# NOTE: when reversed this is keep_last_half
-def generate_keep_first_half(diff_lb: float, diff_ub: float) -> dict:
-    """ keep the first half of the input """
+# NOTE: when reversed this is copy_last_half
+def generate_copy_first_half(diff_lb: float, diff_ub: float) -> dict:
+    """ copy the first half of the input """
     n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN // 2))
     colors = interval(1, 10, 1)
     go = (tuple(choices(colors, k=n)),)
@@ -750,6 +750,14 @@ def generate_mirror_copy_mirror(diff_lb: float, diff_ub: float) -> dict:
     colors = interval(1, 10, 1)
     gi = (tuple(choices(colors, k=n)),)
     go = hconcat(vmirror(gi), hconcat(gi, vmirror(gi)))
+    return {'input': gi, 'output': go}
+
+def generate_mirror(diff_lb: float, diff_ub: float) -> dict:
+    """ concatenate a mirrored copy of the input, a copy of the input, and a mirrored copy of the input"""
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES * MAX_LEN))
+    colors = interval(1, 10, 1)
+    gi = (tuple(choices(colors, k=n)),)
+    go = vmirror(gi)
     return {'input': gi, 'output': go}
 
 def generate_remove_odd_indices(diff_lb: float, diff_ub: float) -> dict:
@@ -1560,3 +1568,289 @@ def _shuffle_adjacent_different_color(items_orig: list[tuple[int, int]]) -> list
         print(f"{_attempt} failed")
             
     return [] # Failed to find a valid shuffle after all attempts
+
+# https://github.com/khalil-research/1D-ARC/blob/main/README.md
+
+# NOTE: this can be reversed for move_1p_left
+def generate_move_1p_no_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move 1 pixel right """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+1)), go)
+    if bg_r >= 1:
+        go = hconcat(go, canvas(BGC, (1, bg_r-1)))
+    return {'input': gi, 'output': go}
+
+# NOTE: this can be reversed for move_1p_left
+def generate_move_1p_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move 1 pixel right """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+1)), go)
+    if bg_r >= 1:
+        go = hconcat(go, canvas(BGC, (1, bg_r-1)))
+    return {'input': gi, 'output': go}
+
+# NOTE: this can be reversed for move_1p_left
+def generate_move_2p_no_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move 2 pixels right """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+2)), go)
+    if bg_r >= 2:
+        go = hconcat(go, canvas(BGC, (1, bg_r-2)))
+    return {'input': gi, 'output': go}
+
+# NOTE: this can be reversed for move_1p_left
+def generate_move_2p_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move 2 pixels right """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+2)), go)
+    if bg_r >= 2:
+        go = hconcat(go, canvas(BGC, (1, bg_r-2)))
+    return {'input': gi, 'output': go}
+
+# NOTE: this can be reversed for move_1p_left
+def generate_move_3p_no_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move 3 pixels right """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+3)), go)
+    if bg_r >= 3:
+        go = hconcat(go, canvas(BGC, (1, bg_r-3)))
+    return {'input': gi, 'output': go}
+
+# NOTE: this can be reversed for move_1p_left
+def generate_move_3p_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move 3 pixels right """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+3)), go)
+    if bg_r >= 3:
+        go = hconcat(go, canvas(BGC, (1, bg_r-3)))
+    return {'input': gi, 'output': go}
+
+def generate_move_to_end_no_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move to right until there is no more background color """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+bg_r)), go)
+    return {'input': gi, 'output': go}
+
+def generate_move_to_end_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move to right until there is no more background color """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+bg_r)), go)
+    return {'input': gi, 'output': go}
+
+def generate_move_to_wall_no_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move to right until line of length 1 is reached by leading line """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (2, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+bg_r)), go)
+    c = choice([color for color in colors if color != prev_c])
+    wall = hconcat(canvas(c, (1, 1)), canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+    gi = hconcat(gi, wall)
+    go = hconcat(go, wall)
+    return {'input': gi, 'output': go}
+
+def generate_move_to_wall_gaps(diff_lb: float, diff_ub: float) -> dict:
+    """ move to right until line of length 1 is reached by leading line """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            gi = hconcat(gi, canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, 10)))))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        gi = hconcat(gi, canvas(c, (1, unifint(diff_lb, diff_ub, (2, MAX_LEN)))))
+        prev_c = c
+    go = gi
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = hconcat(canvas(BGC, (1, bg_l+bg_r)), go)
+    c = choice([color for color in colors if color != prev_c])
+    wall = hconcat(canvas(c, (1, 1)), canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+    gi = hconcat(gi, wall)
+    go = hconcat(go, wall)
+    return {'input': gi, 'output': go}
+
+def generate_gravitate_to_end(diff_lb: float, diff_ub: float) -> dict:
+    """ gravitate to end """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    sum_bg = 0
+    lines = []
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            gi = hconcat(gi, canvas(BGC, (1, l)))
+            sum_bg += l
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        lines.append((c, l))
+        prev_c = c
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = canvas(BGC, (1, sum_bg+bg_l+bg_r))
+    for c, l in lines:
+        go = hconcat(go, canvas(c, (1, l)))
+    return {'input': gi, 'output': go}
+
+def generate_gravitate_to_wall(diff_lb: float, diff_ub: float) -> dict:
+    """ gravitate to wall """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    sum_bg = 0
+    lines = []
+    prev_c = None
+    for _ in range(n):
+        if choice([True, False]):
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            gi = hconcat(gi, canvas(BGC, (1, l)))
+            sum_bg += l
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        lines.append((c, l))
+        prev_c = c
+    bg_l = unifint(diff_lb, diff_ub, (0, MAX_LEN))
+    bg_r = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(canvas(BGC, (1, bg_l)), gi)
+    gi = hconcat(gi, canvas(BGC, (1, bg_r)))
+    go = canvas(BGC, (1, sum_bg+bg_l+bg_r))
+    for c, l in lines:
+        go = hconcat(go, canvas(c, (1, l)))
+    c = choice([color for color in colors if color != prev_c])
+    wall = hconcat(canvas(c, (1, 1)), canvas(BGC, (1, unifint(diff_lb, diff_ub, (1, MAX_LEN)))))
+    gi = hconcat(gi, wall)
+    go = hconcat(go, wall)
+    return {'input': gi, 'output': go}
