@@ -1854,3 +1854,54 @@ def generate_gravitate_to_wall(diff_lb: float, diff_ub: float) -> dict:
     gi = hconcat(gi, wall)
     go = hconcat(go, wall)
     return {'input': gi, 'output': go}
+
+def generate_gravitate_to_center(diff_lb: float, diff_ub: float) -> dict:
+    """ gravitate to center """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    mid = unifint(diff_lb, diff_ub, (0, n))
+    colors = interval(1, 10, 1)
+    gi = ((),)
+    sum_bg_left = 0
+    lines_left = []
+    prev_c = None
+    for _ in range(mid):
+        if choice([True, False]):
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            gi = hconcat(gi, canvas(BGC, (1, l)))
+            sum_bg_left += l
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        lines_left.append((c, l))
+        prev_c = c
+
+    bg_mid_left = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    bg_mid_right = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+    gi = hconcat(gi, canvas(BGC, (1, bg_mid_left)))
+    c = choice([color for color in colors if color != prev_c])
+    prev_c = c
+    wall = canvas(c, (1, 1))
+    gi = hconcat(gi, wall)
+    gi = hconcat(gi, canvas(BGC, (1, bg_mid_right)))
+
+    sum_bg_right = 0
+    lines_right = []
+    for _ in range(mid, n):
+        if choice([True, False]):
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            gi = hconcat(gi, canvas(BGC, (1, l)))
+            sum_bg_right += l
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (2, MAX_LEN))
+        gi = hconcat(gi, canvas(c, (1, l)))
+        lines_right.append((c, l))
+        prev_c = c
+
+    go = canvas(BGC, (1, sum_bg_left+bg_mid_left))
+    for c, l in lines_left:
+        go = hconcat(go, canvas(c, (1, l)))
+    go = hconcat(go, wall)
+    for c, l in lines_right:
+        go = hconcat(go, canvas(c, (1, l)))
+    go = hconcat(go, canvas(BGC, (1, sum_bg_right+bg_mid_right)))
+    return {'input': gi, 'output': go}
