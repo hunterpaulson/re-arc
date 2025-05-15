@@ -1905,3 +1905,134 @@ def generate_gravitate_to_center(diff_lb: float, diff_ub: float) -> dict:
         go = hconcat(go, canvas(c, (1, l)))
     go = hconcat(go, canvas(BGC, (1, sum_bg_right+bg_mid_right)))
     return {'input': gi, 'output': go}
+
+def generate_connect_dots_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ connect dots of same color with that color """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    go = ((),)
+    prev_c = None
+    starts, lengths = [], []
+    j = 0
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (3, MAX_LEN)) # >=3 guarantees gap exists
+        go = hconcat(go, canvas(c, (1, l)))
+        starts.append(j)
+        lengths.append(l)
+        prev_c = c
+        j += l
+    gi = go
+    for j, l in zip(starts, lengths):
+        hole = asobject(canvas(BGC, (1, l-2)))
+        gi = fill(gi, BGC, shift(hole, (0, j+1)))
+    return {'input': gi, 'output': go}
+
+def generate_connect_dots_background(diff_lb: float, diff_ub: float) -> dict:
+    """ connect dots of SAME color with that color, harder since there may be background between different colors """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    go = ((),)
+    prev_c = None
+    lines = []
+    j = 0
+    for _ in range(n):
+        if choice([True, False]):
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            go = hconcat(go, canvas(BGC, (1, l)))
+            lines.append((BGC, l, j))
+            j += l
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (3, MAX_LEN)) # >=3 guarantees gap exists
+        go = hconcat(go, canvas(c, (1, l)))
+        lines.append((c, l, j))
+        prev_c = c
+        j += l
+    gi = go
+    for c, l, j in lines:
+        if c != BGC:
+            hole = asobject(canvas(BGC, (1, l-2)))
+            gi = fill(gi, BGC, shift(hole, (0, j+1)))
+    return {'input': gi, 'output': go}
+
+# NOTE: almost identical to connect_dots, but variable length size holes to connect
+def generate_connect_colors_no_background(diff_lb: float, diff_ub: float) -> dict:
+    """ connect lines of same color with that color """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    go = ((),)
+    prev_c = None
+    starts, lengths = [], []
+    j = 0
+    for _ in range(n):
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (3, MAX_LEN)) # >=3 guarantees gap exists
+        go = hconcat(go, canvas(c, (1, l)))
+        starts.append(j)
+        lengths.append(l)
+        prev_c = c
+        j += l
+    gi = go
+    for j, l in zip(starts, lengths):
+        w = unifint(diff_lb, diff_ub, (1, l-2))
+        hole = asobject(canvas(BGC, (1, w)))
+        start = unifint(diff_lb, diff_ub, (1, l-1-w))
+        gi = fill(gi, BGC, shift(hole, (0, j+start)))
+    return {'input': gi, 'output': go}
+
+# NOTE: almost identical to connect_dots, but variable length size holes to connect
+def generate_connect_colors_background(diff_lb: float, diff_ub: float) -> dict:
+    """ connect lines of same color with that color """
+    n = unifint(diff_lb, diff_ub, (1, MAX_LINES))
+    colors = interval(1, 10, 1)
+    go = ((),)
+    prev_c = None
+    lines = []
+    j = 0
+    for _ in range(n):
+        if choice([True, False]):
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            go = hconcat(go, canvas(BGC, (1, l)))
+            lines.append((BGC, l, j))
+            j += l
+        c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (3, MAX_LEN)) # >=3 guarantees gap exists
+        go = hconcat(go, canvas(c, (1, l)))
+        lines.append((c, l, j))
+        prev_c = c
+        j += l
+    gi = go
+    for c, l, j in lines:
+        if c != BGC:
+            w = unifint(diff_lb, diff_ub, (1, l-2))
+            hole = asobject(canvas(BGC, (1, w)))
+            start = unifint(diff_lb, diff_ub, (1, l-1-w))
+            gi = fill(gi, BGC, shift(hole, (0, j+start)))
+    return {'input': gi, 'output': go}
+
+def generate_flip_connected_components(diff_lb: float, diff_ub: float) -> dict:
+    """ flip connected components """
+    n = unifint(diff_lb, diff_ub, (3, MAX_LINES))
+    colors = interval(1, 10, 1)
+    prev_c = None
+    components = []
+    current = ((),)
+    for _ in range(n):
+        if len(current[0]) > MAX_LEN and choice([True, False]): # no longer connected, add to components and reset current
+            components.append(current)
+            current = ((),)
+            l = unifint(diff_lb, diff_ub, (1, 10))
+            components.append(canvas(BGC, (1, l)))
+            c = choice(colors)
+        else:
+            c = choice([color for color in colors if color != prev_c])
+        l = unifint(diff_lb, diff_ub, (1, MAX_LEN))
+        current = hconcat(current, canvas(c, (1, l)))
+        prev_c = c
+    components.append(current)
+    gi = ((),)
+    go = ((),)
+    for com in components:
+        gi = hconcat(gi, com)
+        go = hconcat(go, vmirror(com))
+    return {'input': gi, 'output': go}
